@@ -223,6 +223,44 @@ def run_ttest():
     value for better should be either "university town" or "non-university town"
     depending on which has a lower mean price ratio (which is equivilent to a
     reduced market loss).'''
+    #New variables that identify the recession start and recession bottom periods
+    rec_start = get_recession_start().upper()
+    rec_bottom = get_recession_bottom().upper()
     
-    return "ANSWER"
+    #Data for university towns and non-university towns
+    uni_towns = get_list_of_university_towns()
+    uni_towns['Category'] = 'University_Town'
+    
+    #Including housing data
+    housing = convert_housing_data_to_quarters()[[rec_start, rec_bottom]].copy()
+    housing['Ratio'] = housing[rec_start]/housing[rec_bottom]
+    #housing = housing['Ratio'].dropna().copy()
+    #housing = housing[housing['Ratio'].notna()].copy()
+    housing = housing.reset_index().copy()
+    
+    #merging housing data and university town data
+    merged = pd.merge(housing, uni_towns,
+                     on = ['State', 'RegionName'], 
+                     how = 'left')
+    
+    merged['Category'] = merged['Category'].fillna('Non_University_Town')
+    merged = merged.dropna().copy()
+    
+    uni = merged[merged['Category']=='University_Town'].copy()
+    non = merged[merged['Category']=='Non_University_Town'].copy()
+    
+    
+    ttest_pval = ttest_ind(uni['Ratio'], non['Ratio'])[1]
+    if ttest_pval < 0.01:
+        different = True
+    else:
+        different = False
+    
+    if uni['Ratio'].mean() < non['Ratio'].mean():
+        better = "University town"
+    else:
+        better = "Non-university town"
+    
+    return (ttest_pval, different, better)
+run_ttest()
 
